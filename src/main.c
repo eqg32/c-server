@@ -1,0 +1,80 @@
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include "../include/child_process.h"
+#include "../include/handlers.h"
+
+int
+main (int argc, char *argv[])
+{
+  int port = 8080;
+  if (argc >= 2)
+    {
+      port = atoi (argv[1]);
+    }
+  int port_ns = htons (port);
+
+  /* socket related variables */
+  int serv_sock = socket (AF_INET, SOCK_STREAM, 0), client_sock;
+  if (serv_sock == 0)
+    {
+      perror ("socket");
+      exit (1);
+    }
+  struct sockaddr_in sockaddr
+      = { AF_INET, port_ns, .sin_addr.s_addr = INADDR_ANY };
+  socklen_t socklen = sizeof (sockaddr);
+
+  if ((bind (serv_sock, (struct sockaddr *)&sockaddr, socklen)) < 0)
+    {
+      perror ("bind");
+      exit (1);
+    }
+
+  if ((listen (serv_sock, MAXPROC)) < 0)
+    {
+      perror ("listen");
+      exit (1);
+    }
+
+  /* these processes just kill themselves */
+  for (int i = 0; i < MAXPROC; i++)
+    {
+      pid_t pid = fork ();
+      if (pid < 0)
+        {
+          perror ("fork");
+        }
+      else if (pid == 0)
+        {
+          exit (0);
+        }
+    }
+
+  dispatcher_t d;
+  dispatcher_register_handler (&d, "/", root);
+  dispatcher_register_handler (&d, "/mountains.jpg", mountains);
+  dispatcher_register_handler (&d, "/favicon.ico", favicon);
+
+  /* fork all the connections and process them */
+  while (1)
+    {
+      if ((client_sock
+           = accept (serv_sock, (struct sockaddr *)&sockaddr, &socklen))
+          < 0)
+        {
+          perror ("accept");
+          exit (1);
+        }
+      child (client_sock, &d);
+    }
+  close (serv_sock);
+  return 0;
+}

@@ -52,7 +52,14 @@ http_get_route (int client_sock, int buffer_size)
 }
 
 void
-http_buffered_send (int client_sock, const char *filename, int buffer_size)
+http_close_connection (int client_sock)
+{
+  shutdown (client_sock, SHUT_WR);
+  close (client_sock);
+}
+
+void
+http_send_buffered (int client_sock, const char *filename, int buffer_size)
 {
   int bytes_read;
   char buffer[buffer_size];
@@ -67,7 +74,7 @@ http_respond_with_file (int client_sock, const char *filename, int buffer_size)
 {
   char *headers = http_generate_headers (filename);
   send (client_sock, headers, strlen (headers), 0);
-  http_buffered_send (client_sock, filename, buffer_size);
+  http_send_buffered (client_sock, filename, buffer_size);
   free (headers);
 }
 
@@ -88,8 +95,7 @@ dispatcher_handle_request (const dispatcher_t *dispatcher, int client_sock,
       char buffer[] = "HTTP/1.1 403 Forbidden\r\n\r\nUser is not allowed to "
                       "make such requests.\r\n";
       send (client_sock, buffer, strlen (buffer), 0);
-      shutdown (client_sock, SHUT_WR);
-      close (client_sock);
+      http_close_connection (client_sock);
     }
   else
     node->handler (client_sock);

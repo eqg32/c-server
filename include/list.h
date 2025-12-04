@@ -3,13 +3,13 @@
 
 typedef struct node
 {
-  char *route;
-  void (*handler) (int client_sock);
+  char *name;
+  void *value;
   struct node *next;
 } list_t;
 
-list_t *list_insert (list_t *head, const char *route, void (*handler) (int client_sock));
-list_t *list_delete (list_t *head, const char *route);
-list_t *list_search (list_t *head, const char *route);
+list_t *list_insert (list_t *head, const char *name, void *value);
+list_t *list_delete (list_t *head, const char *name);
+list_t *list_search (list_t *head, const char *name);
 
 #endif

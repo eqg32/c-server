@@ -98,5 +98,5 @@ dispatcher_handle_request (const dispatcher_t *dispatcher, int client_sock,
       http_close_connection (client_sock);
     }
   else
-    node->handler (client_sock);
+    ((void (*) (int)) (node->value)) (client_sock);
 }

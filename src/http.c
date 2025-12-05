@@ -1,5 +1,6 @@
 #include "../include/http.h"
 #include <fcntl.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,8 +8,27 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+pair_t *
+pair_create (const char *key, const char *value)
+{
+  pair_t *new = malloc (sizeof (pair_t));
+  new->pair[0] = malloc (strlen (key));
+  new->pair[1] = malloc (strlen (value));
+  strcpy (new->pair[0], key);
+  strcpy (new->pair[1], value);
+  return new;
+}
+
 char *
-http_define_mime (const char *filename)
+pair_to_string (const pair_t *pair)
+{
+  char *h;
+  asprintf (&h, "%s: %s\r\n", pair->pair[0], pair->pair[1]);
+  return h;
+}
+
+char *
+http_get_mime (const char *filename)
 {
   char *mime;
   if (strstr (filename, ".html"))
@@ -24,20 +44,44 @@ http_define_mime (const char *filename)
   return mime;
 }
 
+headers_t *
+headers_create (int status, const char *message, list_t *pairs)
+{
+  headers_t *headers = malloc (sizeof (headers_t));
+  headers->status = status;
+  headers->message = malloc (strlen (message));
+  strcpy (headers->message, message);
+  headers->pairs = pairs;
+  return headers;
+}
+
 char *
-http_generate_headers (const char *filename)
+headers_to_string (const headers_t *headers)
+{
+  char *h = malloc (1024);
+  list_t *tmp = headers->pairs;
+  asprintf (&h, "HTTP/1.1 %d %s\r\n", headers->status, headers->message);
+  while (tmp)
+    {
+      h = strcat (h, pair_to_string ((pair_t *)tmp->value));
+      tmp = tmp->next;
+    }
+  h = strcat (h, "\r\n");
+  list_destroy (headers->pairs);
+  free ((void *)headers);
+  return h;
+}
+
+char *
+http_get_file_length (const char *filename)
 {
   struct stat stat;
-  char *headers;
-  char *mime = http_define_mime (filename);
   int fd = open (filename, O_RDONLY);
+  char *length;
   fstat (fd, &stat);
-  asprintf (&headers,
-            "HTTP/1.1 200 OK\r\ncontent-type: %s\r\ncontent-length: "
-            "%ld\r\nconnection: close\r\n\r\n",
-            mime, stat.st_size);
-  free (mime);
-  return headers;
+  close (fd);
+  asprintf (&length, "%ld", stat.st_size);
+  return length;
 }
 
 char *
@@ -49,6 +93,33 @@ http_get_route (int client_sock, int buffer_size)
   sscanf (buffer, "%*s %s", route);
   free (buffer);
   return route;
+}
+
+char *
+http_generate_headers_string (int status, const char *message,
+                              const char *string)
+{
+  char *length;
+  asprintf (&length, "%lu", strlen (string));
+  list_t *pairs = NULL;
+  pairs = list_insert (pairs, "ct", pair_create ("content-type", "text/html"));
+  pairs = list_insert (pairs, "cl", pair_create ("content-length", length));
+  free (length);
+  headers_t *headers = headers_create (status, message, pairs);
+  return headers_to_string (headers);
+}
+
+char *
+http_generate_headers_file (int status, const char *message,
+                            const char *filename)
+{
+  list_t *pairs = NULL;
+  pairs = list_insert (pairs, "ct", pair_create ("content-type", "text/html"));
+  pairs = list_insert (
+      pairs, "cl",
+      pair_create ("content-length", http_get_file_length (filename)));
+  headers_t *headers = headers_create (status, message, pairs);
+  return headers_to_string (headers);
 }
 
 void
@@ -70,12 +141,24 @@ http_send_buffered (int client_sock, const char *filename, int buffer_size)
 }
 
 void
-http_respond_with_file (int client_sock, const char *filename, int buffer_size)
+http_respond_with_string (const response_t *response)
 {
-  char *headers = http_generate_headers (filename);
-  send (client_sock, headers, strlen (headers), 0);
-  http_send_buffered (client_sock, filename, buffer_size);
-  free (headers);
+  char *hs = http_generate_headers_string (response->status, response->message,
+                                           response->string);
+  send (response->client_sock, hs, strlen (hs), 0);
+  send (response->client_sock, response->string, strlen (response->string), 0);
+  free (hs);
+}
+
+void
+http_respond_with_file (const response_t *response)
+{
+  char *hs = http_generate_headers_file (response->status, response->message,
+                                         response->filename);
+  send (response->client_sock, hs, strlen (hs), 0);
+  http_send_buffered (response->client_sock, response->filename,
+                      response->buffer_size);
+  free (hs);
 }
 
 void

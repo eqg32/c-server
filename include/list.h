@@ -11,5 +11,6 @@ typedef struct node
 list_t *list_insert (list_t *head, const char *name, void *value);
 list_t *list_delete (list_t *head, const char *name);
 list_t *list_search (list_t *head, const char *name);
+void list_destroy (list_t *head);
 
 #endif

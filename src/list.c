@@ -45,3 +45,14 @@ list_search (list_t *head, const char *name)
     return head;
   return list_search (head->next, name);
 }
+
+void
+list_destroy (list_t *head)
+{
+  if (head)
+    {
+      list_t *tmp = head->next;
+      free (head);
+      list_destroy (tmp->next);
+    }
+}

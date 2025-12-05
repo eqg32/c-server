@@ -1,3 +1,7 @@
 * Introduction
 
 This nightmare of a programmer will undergo much shit in the future.
+
+* License
+
+I do not own any materials from the ~public/~ folder. The parts of code, that I have written myself are licensed under GNU GPL-3.

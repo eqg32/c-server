@@ -175,9 +175,15 @@ dispatcher_handle_request (const dispatcher_t *dispatcher, int client_sock,
   list_t *node = list_search (dispatcher->handlers, route);
   if (!node)
     {
-      char buffer[] = "HTTP/1.1 403 Forbidden\r\n\r\nUser is not allowed to "
-                      "make such requests.\r\n";
-      send (client_sock, buffer, strlen (buffer), 0);
+      response_t r;
+      r.status = 200;
+      r.client_sock = client_sock;
+      r.string = "<!DOCTYPE html> <html lang=\"en\"> <head> <meta "
+                 "charset=\"UTF-8\"> <title>403 Forbidden</title> "
+                 "</head> <body> <center> <h1>403 Forbidden</h1> <hr "
+                 "width=\"80%\"> <p>You don't have permission to access "
+                 "this page.</p> </center> </body> </html>";
+      http_respond_with_string (&r);
       http_close_connection (client_sock);
     }
   else

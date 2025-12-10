@@ -2,37 +2,28 @@
 #include "../include/http.h"
 
 void
-root (int client_sock)
+root (connection_t *connection)
 {
   response_t r;
-  r.client_sock = client_sock;
-  r.status = 200;
-  r.message = "OK";
-  r.filename = "public/index.html";
-  r.buffer_size = BUFSIZE;
-  http_respond_with_file (&r);
+  response_init (&r, 200);
+  r.use_file (&r, "public/index.html");
+  connection->send_response (connection, &r);
 }
 
 void
-mountains (int client_sock)
+mountains (connection_t *connection)
 {
   response_t r;
-  r.client_sock = client_sock;
-  r.status = 200;
-  r.message = "OK";
-  r.filename = "public/mountains.jpg";
-  r.buffer_size = BUFSIZE;
-  http_respond_with_file (&r);
+  response_init (&r, 200);
+  r.use_file (&r, "public/mountains.jpg");
+  connection->send_response (connection, &r);
 }
 
 void
-favicon (int client_sock)
+favicon (connection_t *connection)
 {
   response_t r;
-  r.client_sock = client_sock;
-  r.status = 200;
-  r.message = "OK";
-  r.filename = "public/emacs.png";
-  r.buffer_size = BUFSIZE;
-  http_respond_with_file (&r);
+  response_init (&r, 200);
+  r.use_file (&r, "public/mountains.jpg");
+  connection->send_response (connection, &r);
 }

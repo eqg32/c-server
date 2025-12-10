@@ -4,8 +4,8 @@
 #include "child_process.h"
 #include "http.h"
 
-void root (int client_sock);
-void mountains (int client_sock);
-void favicon (int client_sock);
+void root (connection_t *connection);
+void mountains (connection_t *connection);
+void favicon (connection_t *connection);
 
 #endif

@@ -59,9 +59,11 @@ main (int argc, char *argv[])
     }
 
   dispatcher_t d;
-  dispatcher_register_handler (&d, "/", root);
-  dispatcher_register_handler (&d, "/mountains.jpg", mountains);
-  dispatcher_register_handler (&d, "/favicon.ico", favicon);
+  d.handlers = malloc (sizeof (list_t));
+  dispatcher_init (&d);
+  d.register_handler (&d, "/", root);
+  d.register_handler (&d, "/mountains.jpg", mountains);
+  d.register_handler (&d, "/favicon.ico", favicon);
 
   /* fork all the connections and process them */
   while (1)
@@ -73,7 +75,9 @@ main (int argc, char *argv[])
           perror ("accept");
           exit (1);
         }
-      child (client_sock, &d);
+      connection_t con;
+      connection_init (&con, client_sock, 1024);
+      child (&con, &d);
     }
   close (serv_sock);
   return 0;

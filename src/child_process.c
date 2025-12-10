@@ -10,7 +10,7 @@
 #include "../include/http.h"
 
 void
-child (int client_sock, const dispatcher_t *dispatcher)
+child (connection_t *connection, const dispatcher_t *dispatcher)
 {
   wait (NULL);
 
@@ -23,9 +23,10 @@ child (int client_sock, const dispatcher_t *dispatcher)
     }
   else if (pid == 0)
     {
-      char *route = http_get_route (client_sock, BUFSIZE);
-      dispatcher_handle_request (dispatcher, client_sock, route);
-      http_close_connection (client_sock);
+      request_t r;
+      connection->read_request (connection, &r);
+      dispatcher->handle (dispatcher, connection, &r);
+      connection->shutdown (connection);
       exit (0);
     }
 }

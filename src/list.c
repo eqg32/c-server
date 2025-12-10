@@ -1,6 +1,8 @@
 #include "../include/list.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 struct node *
 node_insert (struct node *head, const char *name, void *value)
@@ -10,7 +12,7 @@ node_insert (struct node *head, const char *name, void *value)
       struct node *new = (struct node *)malloc (sizeof (struct node));
       new->value = value;
       new->name = malloc (strlen (name));
-      strcpy (new->name, name);
+      asprintf (&new->name, "%s", name);
       new->next = NULL;
       return new;
     }
@@ -55,7 +57,7 @@ node_free (struct node *head)
       struct node *tmp = head->next;
       free (head->name);
       free (head);
-      node_free (tmp->next);
+      node_free (tmp);
     }
 }
 
@@ -68,7 +70,7 @@ node_freec (struct node *head, void (*free_func) (void *ptr))
       free (head->name);
       free_func (head->value);
       free (head);
-      node_freec (tmp->next, free_func);
+      node_freec (tmp, free_func);
     }
 }
 
@@ -87,28 +89,31 @@ list_remove (list_t *self, const char *name)
 void *
 list_search (list_t *self, const char *name)
 {
-  return node_search (self->head, name)->value;
+  struct node *node = node_search (self->head, name);
+  if (!node)
+    return NULL;
+  return node->value;
 }
 
 void
-list_init (list_t *self)
+list_init (list_t *list)
 {
-  self = malloc (sizeof (list_t));
-  self->insert = list_insert;
-  self->remove = list_remove;
-  self->search = list_search;
+  list->head = NULL;
+  list->insert = list_insert;
+  list->remove = list_remove;
+  list->search = list_search;
 }
 
 void
-list_free (list_t *self)
+list_free (list_t *list)
 {
-  node_free (self->head);
-  free (self);
+  node_free (list->head);
+  free (list);
 }
 
 void
-list_freec (list_t *self, void (*free_func) (void *))
+list_freec (list_t *list, void (*free_func) (void *))
 {
-  node_freec (self->head, free_func);
-  free (self);
+  node_freec (list->head, free_func);
+  free (list);
 }

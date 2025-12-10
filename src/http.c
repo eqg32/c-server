@@ -4,188 +4,243 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-pair_t *
-pair_create (const char *key, const char *value)
+void
+request_from_string (request_t *self, const char *string)
 {
-  pair_t *new = malloc (sizeof (pair_t));
-  new->pair[0] = malloc (strlen (key));
-  new->pair[1] = malloc (strlen (value));
-  strcpy (new->pair[0], key);
-  strcpy (new->pair[1], value);
-  return new;
+  self->method = malloc (32);
+  self->route = malloc (64);
+  sscanf (string, "%s %s", self->method, self->route);
+}
+
+void
+request_init (request_t *request, const char *method, const char *path)
+{
+  asprintf (&request->method, "%s", method);
+  asprintf (&request->route, "%s", path);
+  request->from_string = request_from_string;
+}
+
+void
+request_inits (request_t *request, const char *string)
+{
+  request->from_string = request_from_string;
+  request->from_string (request, string);
+}
+
+void
+request_free (request_t *request)
+{
+  free (request->method);
+  free (request->route);
+  free (request);
 }
 
 char *
-pair_to_string (const pair_t *pair)
+response_get_message (response_t *self)
 {
-  char *h;
-  asprintf (&h, "%s: %s\r\n", pair->pair[0], pair->pair[1]);
-  return h;
-}
-
-char *
-http_get_mime (const char *filename)
-{
-  char *mime;
-  if (strstr (filename, ".html"))
-    asprintf (&mime, "text/html");
-  else if (strstr (filename, ".png"))
-    asprintf (&mime, "image/png");
-  else if (strstr (filename, ".jpg"))
-    asprintf (&mime, "image/jpeg");
-  else if (strstr (filename, ".tar"))
-    asprintf (&mime, "application/x-tar");
-  else
-    asprintf (&mime, "text/plain");
-  return mime;
-}
-
-headers_t *
-headers_create (int status, const char *message, list_t *pairs)
-{
-  headers_t *headers = malloc (sizeof (headers_t));
-  headers->status = status;
-  headers->message = malloc (strlen (message));
-  strcpy (headers->message, message);
-  headers->pairs = pairs;
-  return headers;
-}
-
-char *
-headers_to_string (const headers_t *headers)
-{
-  char *h = malloc (1024);
-  list_t *tmp = headers->pairs;
-  asprintf (&h, "HTTP/1.1 %d %s\r\n", headers->status, headers->message);
-  while (tmp)
+  switch (self->status)
     {
-      h = strcat (h, pair_to_string ((pair_t *)tmp->value));
-      tmp = tmp->next;
+    case 200:
+      return "OK";
+      break;
+    case 403:
+      return "Forbidden";
+      break;
     }
-  h = strcat (h, "\r\n");
-  list_destroy (headers->pairs);
-  free ((void *)headers);
-  return h;
+  self->status = 400;
+  return "Bad Request";
 }
 
 char *
-http_get_file_length (const char *filename)
+response_file_mime (const char *filename)
+{
+  if (strstr (filename, ".html"))
+    return "text/html";
+  else if (strstr (filename, ".png"))
+    return "image/png";
+  else if (strstr (filename, ".jpg"))
+    return "image/jpeg";
+  else if (strstr (filename, ".tar"))
+    return "application/x-tar";
+  else
+    return "text/html";
+}
+
+char *
+response_string_mime (const char *string)
+{
+  return "text/html";
+}
+
+int
+response_file_length (const char *filename)
 {
   struct stat stat;
   int fd = open (filename, O_RDONLY);
   char *length;
   fstat (fd, &stat);
   close (fd);
-  asprintf (&length, "%ld", stat.st_size);
-  return length;
+  return stat.st_size;
 }
 
-char *
-http_get_route (int client_sock, int buffer_size)
+int
+response_string_length (const char *string)
 {
-  char *buffer = malloc (buffer_size);
-  char *route = malloc (buffer_size);
-  read (client_sock, buffer, buffer_size);
-  sscanf (buffer, "%*s %s", route);
+  return strlen (string);
+}
+
+void
+response_use_file (response_t *self, const char *filename)
+{
+  asprintf (&self->filename, "%s", filename);
+  self->response_type = File;
+  self->mime_type = self->file_mime (filename);
+  self->content_length = self->file_length (filename);
+  self->message = self->get_message (self);
+}
+
+void
+response_use_string (response_t *self, const char *string)
+{
+  asprintf (&self->filename, "%s", string);
+  self->response_type = String;
+  self->mime_type = self->string_mime (string);
+  self->content_length = self->string_length (string);
+  self->message = self->get_message (self);
+}
+
+void
+response_init (response_t *response, int status)
+{
+  response->status = status;
+  response->get_message = response_get_message;
+  response->file_mime = response_file_mime;
+  response->file_length = response_file_length;
+  response->use_file = response_use_file;
+  response->string_mime = response_string_mime;
+  response->string_length = response_string_length;
+  response->use_string = response_use_string;
+}
+
+void
+response_free (response_t *response)
+{
+  free (response->message);
+  free (response->mime_type);
+  if (response->response_type == File)
+    free (response->filename);
+  else if (response->response_type == String)
+    free (response->string);
+  free (response);
+}
+
+void
+connection_read_request (connection_t *self, request_t *request)
+{
+  char *buffer = malloc (4096);
+  read (self->client_sock, buffer, 4096);
+  buffer[4095] = '\0';
+  puts (buffer);
+  request_inits (request, buffer);
   free (buffer);
-  return route;
-}
-
-char *
-http_generate_headers_string (int status, const char *message,
-                              const char *string)
-{
-  char *length;
-  asprintf (&length, "%lu", strlen (string));
-  list_t *pairs = NULL;
-  pairs = list_insert (pairs, "ct", pair_create ("content-type", "text/html"));
-  pairs = list_insert (pairs, "cl", pair_create ("content-length", length));
-  free (length);
-  headers_t *headers = headers_create (status, message, pairs);
-  return headers_to_string (headers);
-}
-
-char *
-http_generate_headers_file (int status, const char *message,
-                            const char *filename)
-{
-  list_t *pairs = NULL;
-  pairs = list_insert (pairs, "ct", pair_create ("content-type", "text/html"));
-  pairs = list_insert (
-      pairs, "cl",
-      pair_create ("content-length", http_get_file_length (filename)));
-  headers_t *headers = headers_create (status, message, pairs);
-  return headers_to_string (headers);
 }
 
 void
-http_close_connection (int client_sock)
+connection_send_response (connection_t *self, const response_t *response)
 {
-  shutdown (client_sock, SHUT_WR);
-  close (client_sock);
-}
-
-void
-http_send_buffered (int client_sock, const char *filename, int buffer_size)
-{
+  int fd;
   int bytes_read;
-  char buffer[buffer_size];
-  int fd = open (filename, O_RDONLY);
-  while ((bytes_read = read (fd, &buffer, buffer_size)) > 0)
-    send (client_sock, buffer, bytes_read, 0);
-  close (fd);
+  char buffer[self->buffer_size];
+  char *headers = NULL;
+
+  asprintf (&headers,
+            "HTTP/1.1 %d %s\r\ncontent-length: %d\r\ncontent-type: %s\r\n\r\n",
+            response->status, response->message, response->content_length,
+            response->mime_type);
+  write (self->client_sock, headers, strlen (headers));
+  switch (response->response_type)
+    {
+    case String:
+      write (self->client_sock, response->string, strlen (response->string));
+      break;
+    case File:
+      fd = open (response->filename, O_RDONLY);
+      while ((bytes_read = read (fd, buffer, self->buffer_size)) != 0)
+        write (self->client_sock, buffer, bytes_read);
+      close (fd);
+      break;
+    }
+  free (headers);
 }
 
 void
-http_respond_with_string (const response_t *response)
+connection_shutdown (connection_t *self)
 {
-  char *hs = http_generate_headers_string (response->status, response->message,
-                                           response->string);
-  send (response->client_sock, hs, strlen (hs), 0);
-  send (response->client_sock, response->string, strlen (response->string), 0);
-  free (hs);
+  shutdown (self->client_sock, SHUT_WR);
+  close (self->client_sock);
 }
 
 void
-http_respond_with_file (const response_t *response)
+connection_init (connection_t *connection, int client_sock, int buffer_size)
 {
-  char *hs = http_generate_headers_file (response->status, response->message,
-                                         response->filename);
-  send (response->client_sock, hs, strlen (hs), 0);
-  http_send_buffered (response->client_sock, response->filename,
-                      response->buffer_size);
-  free (hs);
+  connection->client_sock = client_sock;
+  connection->buffer_size = buffer_size;
+  connection->read_request = connection_read_request;
+  connection->send_response = connection_send_response;
 }
 
 void
-dispatcher_register_handler (dispatcher_t *dispatcher, const char *route,
-                             void (*handler) (int client_sock))
+connection_free (connection_t *connection)
 {
-  dispatcher->handlers = list_insert (dispatcher->handlers, route, handler);
+  connection->shutdown (connection);
+  free (connection);
 }
 
 void
-dispatcher_handle_request (const dispatcher_t *dispatcher, int client_sock,
-                           const char *route)
+dispatcher_register_handler (dispatcher_t *self, const char *route,
+                             void (*handler) (connection_t *connection))
 {
-  list_t *node = list_search (dispatcher->handlers, route);
-  if (!node)
+  self->handlers->insert (self->handlers, route, handler);
+}
+
+void
+dispatcher_handle (const dispatcher_t *self, connection_t *connection,
+                   request_t *request)
+{
+  void (*handler) (connection_t *)
+      = self->handlers->search (self->handlers, request->route);
+  if (!handler)
     {
       response_t r;
-      r.status = 200;
-      r.client_sock = client_sock;
-      r.string = "<!DOCTYPE html> <html lang=\"en\"> <head> <meta "
-                 "charset=\"UTF-8\"> <title>403 Forbidden</title> "
-                 "</head> <body> <center> <h1>403 Forbidden</h1> <hr "
-                 "width=\"80%\"> <p>You don't have permission to access "
-                 "this page.</p> </center> </body> </html>";
-      http_respond_with_string (&r);
-      http_close_connection (client_sock);
+      response_init (&r, 200);
+      r.use_string (
+          &r,
+          "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> "
+          "<title>403 Forbidden</title> </head> <body> <center> <h1>403 "
+          "Forbidden</h1> <hr width=\"50%\"> <p>You don't have permission to "
+          "access this page.</p> </center> </body> </html>");
+      connection->send_response (connection, &r);
     }
   else
-    ((void (*) (int)) (node->value)) (client_sock);
+    handler (connection);
+}
+
+void
+dispatcher_init (dispatcher_t *dispatcher)
+{
+  dispatcher->register_handler = dispatcher_register_handler;
+  dispatcher->handle = dispatcher_handle;
+  list_init (dispatcher->handlers);
+}
+
+void
+dispatcher_free (dispatcher_t *dispatcher)
+{
+  list_free (dispatcher->handlers);
+  free (dispatcher);
 }

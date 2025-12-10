@@ -5,6 +5,6 @@
 #define BUFSIZE 1024
 #define MAXPROC 8
 
-void child (int client_sock, const dispatcher_t *dispatcher);
+void child (connection_t *connection, const dispatcher_t *dispatcher);
 
 #endif

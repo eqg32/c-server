@@ -12,9 +12,11 @@
 void
 request_from_string (request_t *self, const char *string)
 {
-  self->method = malloc (32);
-  self->route = malloc (64);
-  sscanf (string, "%s %s", self->method, self->route);
+  char method[SMALL_BUFFER_SIZE];
+  char route[SMALL_BUFFER_SIZE];
+  sscanf (string, "%s %s", method, route);
+  asprintf (&self->method, "%s", method);
+  asprintf (&self->route, "%s", route);
 }
 
 void
@@ -107,7 +109,7 @@ response_use_file (response_t *self, const char *filename)
 void
 response_use_string (response_t *self, const char *string)
 {
-  asprintf (&self->filename, "%s", string);
+  asprintf (&self->string, "%s", string);
   self->response_type = String;
   self->mime_type = self->string_mime (string);
   self->content_length = self->string_length (string);
@@ -142,12 +144,9 @@ response_free (response_t *response)
 void
 connection_read_request (connection_t *self, request_t *request)
 {
-  char *buffer = malloc (4096);
-  read (self->client_sock, buffer, 4096);
-  buffer[4095] = '\0';
-  puts (buffer);
+  char buffer[self->buffer_size];
+  read (self->client_sock, buffer, self->buffer_size);
   request_inits (request, buffer);
-  free (buffer);
 }
 
 void
@@ -192,6 +191,7 @@ connection_init (connection_t *connection, int client_sock, int buffer_size)
   connection->buffer_size = buffer_size;
   connection->read_request = connection_read_request;
   connection->send_response = connection_send_response;
+  connection->shutdown = connection_shutdown;
 }
 
 void
@@ -217,7 +217,7 @@ dispatcher_handle (const dispatcher_t *self, connection_t *connection,
   if (!handler)
     {
       response_t r;
-      response_init (&r, 200);
+      response_init (&r, 403);
       r.use_string (
           &r,
           "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> "

@@ -2,6 +2,8 @@
 #define HTTP
 
 #include "list.h"
+#define SMALL_BUFFER_SIZE 128
+#define BUFFER_SIZE 1024
 
 enum response_type
 {

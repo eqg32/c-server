@@ -181,7 +181,6 @@ void
 connection_shutdown (connection_t *self)
 {
   shutdown (self->client_sock, SHUT_WR);
-  close (self->client_sock);
 }
 
 void

@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -27,6 +26,11 @@ child (connection_t *connection, const dispatcher_t *dispatcher)
       connection->read_request (connection, &r);
       dispatcher->handle (dispatcher, connection, &r);
       connection->shutdown (connection);
+      connection->close (connection);
       exit (0);
+    }
+  else if (pid > 0)
+    {
+      connection->close (connection);
     }
 }

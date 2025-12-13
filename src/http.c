@@ -184,6 +184,12 @@ connection_shutdown (connection_t *self)
 }
 
 void
+connection_close (connection_t *self)
+{
+  close (self->client_sock);
+}
+
+void
 connection_init (connection_t *connection, int client_sock, int buffer_size)
 {
   connection->client_sock = client_sock;
@@ -191,6 +197,7 @@ connection_init (connection_t *connection, int client_sock, int buffer_size)
   connection->read_request = connection_read_request;
   connection->send_response = connection_send_response;
   connection->shutdown = connection_shutdown;
+  connection->close = connection_close;
 }
 
 void

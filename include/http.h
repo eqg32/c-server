@@ -48,6 +48,7 @@ typedef struct connection
   void (*read_request)  (struct connection *self, request_t *request);
   void (*send_response) (struct connection *self, const response_t *response);
   void (*shutdown)      (struct connection *self);
+  void (*close)      (struct connection *self);
 } connection_t;
 
 typedef struct dispatcher

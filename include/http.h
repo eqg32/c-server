@@ -4,6 +4,7 @@
 #include "list.h"
 #define SMALL_BUFFER_SIZE 128
 #define BUFFER_SIZE 1024
+#define CONNECTION_TYPE tls_connection_t *
 
 enum response_type
 {

@@ -307,7 +307,7 @@ void
 dispatcher_handle (const dispatcher_t *self, void *connection,
                    request_t *request)
 {
-  tls_connection_t *con = (tls_connection_t *)connection;
+  CONNECTION_TYPE con = (CONNECTION_TYPE)connection;
   void (*handler) (void *)
       = self->handlers->search (self->handlers, request->route);
   if (!handler)

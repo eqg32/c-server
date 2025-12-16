@@ -14,7 +14,7 @@ child (void *connection, const dispatcher_t *dispatcher)
   wait (NULL);
 
   pid_t pid = fork ();
-  tls_connection_t *con = (tls_connection_t *)connection;
+  CONNECTION_TYPE con = (CONNECTION_TYPE)connection;
 
   if (pid < 0)
     {

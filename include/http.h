@@ -52,7 +52,7 @@ typedef struct connection
 typedef struct tls_connection
 {
   struct tls *client_tls;
-  int buffer_size;
+  connection_t *connection;
 
   void (*read_request)  (struct tls_connection *self, request_t *request);
   void (*send_response) (struct tls_connection *self, const response_t *response);
@@ -64,8 +64,8 @@ typedef struct dispatcher
 {
   list_t *handlers;
 
-  void (*register_handler) (struct dispatcher *self, const char *route, void (*handler) (connection_t *connection));
-  void (*handle)           (const struct dispatcher *self, connection_t *connection, request_t *request);
+  void (*register_handler) (struct dispatcher *self, const char *route, void (*handler) (void *connection));
+  void (*handle)           (const struct dispatcher *self, void *connection, request_t *request);
 } dispatcher_t;
 
 void request_init (request_t *request, const char *method, const char *path);
@@ -78,6 +78,9 @@ void response_free  (response_t *response);
 
 void connection_init (connection_t *connection, int client_sock, int buffer_size);
 void connection_free (connection_t *connection);
+
+void tls_connection_init (tls_connection_t *tls_connection, struct tls *ctx, connection_t *connection);
+void tls_connection_free (tls_connection_t *tls_connection);
 
 void dispatcher_init (dispatcher_t *dispatcher);
 void dispatcher_free (dispatcher_t *dispatcher);

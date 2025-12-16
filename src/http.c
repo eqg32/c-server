@@ -7,6 +7,7 @@
 #include <strings.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <tls.h>
 #include <unistd.h>
 
 void
@@ -225,17 +226,89 @@ connection_free (connection_t *connection)
 }
 
 void
+tls_connection_read_request (tls_connection_t *self, request_t *request)
+{
+  char buffer[self->connection->buffer_size];
+  tls_read (self->client_tls, buffer, self->connection->buffer_size);
+  request_inits (request, buffer);
+}
+
+void
+tls_connection_send_response (tls_connection_t *self,
+                              const response_t *response)
+{
+  int fd;
+  int bytes_read;
+  char buffer[self->connection->buffer_size];
+  char *headers = NULL;
+
+  asprintf (&headers,
+            "HTTP/1.1 %d %s\r\ncontent-length: %d\r\ncontent-type: %s\r\n\r\n",
+            response->status, response->message, response->content_length,
+            response->mime_type);
+  tls_write (self->client_tls, headers, strlen (headers));
+  switch (response->response_type)
+    {
+    case String:
+      tls_write (self->client_tls, response->string,
+                 strlen (response->string));
+      break;
+    case File:
+      fd = open (response->filename, O_RDONLY);
+      while ((bytes_read = read (fd, buffer, self->connection->buffer_size))
+             != 0)
+        tls_write (self->client_tls, buffer, bytes_read);
+      close (fd);
+      break;
+    }
+  free (headers);
+}
+
+void
+tls_connection_shutdown (tls_connection_t *self)
+{
+  tls_close (self->client_tls);
+  tls_free (self->client_tls);
+}
+
+void
+tls_connection_close (tls_connection_t *self)
+{
+  self->connection->close (self->connection);
+}
+
+void
+tls_connection_init (tls_connection_t *tls_connection, struct tls *ctx,
+                     connection_t *connection)
+{
+  tls_connection->client_tls = ctx;
+  tls_connection->connection = connection;
+  tls_connection->read_request = tls_connection_read_request;
+  tls_connection->send_response = tls_connection_send_response;
+  tls_connection->shutdown = tls_connection_shutdown;
+  tls_connection->close = tls_connection_close;
+}
+
+void
+tls_connection_free (tls_connection_t *tls_connection)
+{
+  tls_connection->shutdown (tls_connection);
+  free (tls_connection);
+}
+
+void
 dispatcher_register_handler (dispatcher_t *self, const char *route,
-                             void (*handler) (connection_t *connection))
+                             void (*handler) (void *connection))
 {
   self->handlers->insert (self->handlers, route, handler);
 }
 
 void
-dispatcher_handle (const dispatcher_t *self, connection_t *connection,
+dispatcher_handle (const dispatcher_t *self, void *connection,
                    request_t *request)
 {
-  void (*handler) (connection_t *)
+  tls_connection_t *con = (tls_connection_t *)connection;
+  void (*handler) (void *)
       = self->handlers->search (self->handlers, request->route);
   if (!handler)
     {
@@ -246,10 +319,10 @@ dispatcher_handle (const dispatcher_t *self, connection_t *connection,
           "<title>403 Forbidden</title> </head> <body> <center> <h1>403 "
           "Forbidden</h1> <hr width=\"50%\"> <p>You don't have permission to "
           "access this page.</p> </center> </body> </html>");
-      connection->send_response (connection, &r);
+      con->send_response (con, &r);
     }
   else
-    handler (connection);
+    handler (con);
 }
 
 void

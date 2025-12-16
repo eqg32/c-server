@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <tls.h>
+
 #include "../include/child_process.h"
 #include "../include/handlers.h"
 
@@ -19,6 +21,17 @@ main (int argc, char *argv[])
       port = atoi (argv[1]);
     }
   int port_ns = htons (port);
+
+  struct tls *server_ctx;
+  struct tls *client_ctx;
+  struct tls_config *config;
+
+  /* tls configuration */
+  config = tls_config_new ();
+  server_ctx = tls_server ();
+  tls_config_set_cert_file (config, "private/server.crt");
+  tls_config_set_key_file (config, "private/server.key");
+  tls_configure (server_ctx, config);
 
   /* socket related variables */
   int serv_sock = socket (AF_INET, SOCK_STREAM, 0), client_sock;
@@ -74,9 +87,16 @@ main (int argc, char *argv[])
           perror ("accept");
           exit (1);
         }
+      if (tls_accept_socket (server_ctx, &client_ctx, client_sock) == -1)
+        {
+          perror ("tls accept");
+          exit (1);
+        }
       connection_t con;
+      tls_connection_t tls_con;
       connection_init (&con, client_sock, 1024);
-      child (&con, &d);
+      tls_connection_init (&tls_con, client_ctx, &con);
+      child (&tls_con, &d);
     }
   close (serv_sock);
   return 0;

@@ -9,11 +9,12 @@
 #include "../include/http.h"
 
 void
-child (connection_t *connection, const dispatcher_t *dispatcher)
+child (void *connection, const dispatcher_t *dispatcher)
 {
   wait (NULL);
 
   pid_t pid = fork ();
+  tls_connection_t *con = (tls_connection_t *)connection;
 
   if (pid < 0)
     {
@@ -23,14 +24,14 @@ child (connection_t *connection, const dispatcher_t *dispatcher)
   else if (pid == 0)
     {
       request_t r;
-      connection->read_request (connection, &r);
-      dispatcher->handle (dispatcher, connection, &r);
-      connection->shutdown (connection);
-      connection->close (connection);
+      con->read_request (con, &r);
+      dispatcher->handle (dispatcher, con, &r);
+      con->shutdown (con);
+      con->close (con);
       exit (0);
     }
   else if (pid > 0)
     {
-      connection->close (connection);
+      con->close (con);
     }
 }

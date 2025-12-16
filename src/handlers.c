@@ -2,25 +2,28 @@
 #include "../include/http.h"
 
 void
-root (connection_t *connection)
+root (void *connection)
 {
   response_t r;
+  tls_connection_t *con = (tls_connection_t *)connection;
   response_initf (&r, 200, "public/index.html");
-  connection->send_response (connection, &r);
+  con->send_response (con, &r);
 }
 
 void
-mountains (connection_t *connection)
+mountains (void *connection)
 {
   response_t r;
+  tls_connection_t *con = (tls_connection_t *)connection;
   response_initf (&r, 200, "public/mountains.jpg");
-  connection->send_response (connection, &r);
+  con->send_response (con, &r);
 }
 
 void
-favicon (connection_t *connection)
+favicon (void *connection)
 {
   response_t r;
+  tls_connection_t *con = (tls_connection_t *)connection;
   response_initf (&r, 200, "public/mountains.jpg");
-  connection->send_response (connection, &r);
+  con->send_response (con, &r);
 }

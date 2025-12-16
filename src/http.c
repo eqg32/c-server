@@ -117,16 +117,33 @@ response_use_string (response_t *self, const char *string)
 }
 
 void
-response_init (response_t *response, int status)
+response_initf (response_t *response, int status, const char *filename)
 {
   response->status = status;
   response->get_message = response_get_message;
   response->file_mime = response_file_mime;
   response->file_length = response_file_length;
-  response->use_file = response_use_file;
+
+  asprintf (&response->filename, "%s", filename);
+  response->response_type = File;
+  response->mime_type = response->file_mime (filename);
+  response->content_length = response->file_length (filename);
+  response->message = response->get_message (response);
+}
+
+void
+response_inits (response_t *response, int status, const char *string)
+{
+  response->status = status;
+  response->get_message = response_get_message;
   response->string_mime = response_string_mime;
   response->string_length = response_string_length;
-  response->use_string = response_use_string;
+
+  asprintf (&response->string, "%s", string);
+  response->response_type = String;
+  response->mime_type = response->string_mime (string);
+  response->content_length = response->string_length (string);
+  response->message = response->get_message (response);
 }
 
 void
@@ -223,9 +240,8 @@ dispatcher_handle (const dispatcher_t *self, connection_t *connection,
   if (!handler)
     {
       response_t r;
-      response_init (&r, 403);
-      r.use_string (
-          &r,
+      response_inits (
+          &r, 200,
           "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> "
           "<title>403 Forbidden</title> </head> <body> <center> <h1>403 "
           "Forbidden</h1> <hr width=\"50%\"> <p>You don't have permission to "

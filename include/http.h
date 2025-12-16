@@ -34,10 +34,8 @@ typedef struct response
 
   char *(*file_mime)     (const char *filename);
   int   (*file_length)   (const char *filename);
-  void  (*use_file)      (struct response *self, const char *filename);
   char *(*string_mime)   (const char *string);
   int   (*string_length) (const char *string);
-  void  (*use_string)    (struct response *self, const char *string);
 } response_t;
 
 typedef struct connection
@@ -48,8 +46,19 @@ typedef struct connection
   void (*read_request)  (struct connection *self, request_t *request);
   void (*send_response) (struct connection *self, const response_t *response);
   void (*shutdown)      (struct connection *self);
-  void (*close)      (struct connection *self);
+  void (*close)         (struct connection *self);
 } connection_t;
+
+typedef struct tls_connection
+{
+  struct tls *client_tls;
+  int buffer_size;
+
+  void (*read_request)  (struct tls_connection *self, request_t *request);
+  void (*send_response) (struct tls_connection *self, const response_t *response);
+  void (*shutdown)      (struct tls_connection *self);
+  void (*close)         (struct tls_connection *self);
+} tls_connection_t;
 
 typedef struct dispatcher
 {
@@ -63,8 +72,9 @@ void request_init (request_t *request, const char *method, const char *path);
 void request_inits (request_t *request, const char *string);
 void request_free (request_t *request);
 
-void response_init (response_t *response, int status);
-void response_free (response_t *response);
+void response_initf (response_t *response, int status, const char *filename);
+void response_inits (response_t *response, int status, const char *string);
+void response_free  (response_t *response);
 
 void connection_init (connection_t *connection, int client_sock, int buffer_size);
 void connection_free (connection_t *connection);

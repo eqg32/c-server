@@ -314,7 +314,7 @@ dispatcher_handle (const dispatcher_t *self, void *connection,
     {
       response_t r;
       response_inits (
-          &r, 200,
+          &r, 403,
           "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> "
           "<title>403 Forbidden</title> </head> <body> <center> <h1>403 "
           "Forbidden</h1> <hr width=\"50%\"> <p>You don't have permission to "

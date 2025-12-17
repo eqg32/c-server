@@ -1,10 +1,15 @@
 #ifndef HTTP
 #define HTTP
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/crypto.h>
+
 #include "list.h"
+
 #define SMALL_BUFFER_SIZE 128
 #define BUFFER_SIZE 1024
-#define CONNECTION_TYPE tls_connection_t *
+#define CONNECTION_TYPE ssl_connection_t *
 
 enum response_type
 {
@@ -50,16 +55,16 @@ typedef struct connection
   void (*close)         (struct connection *self);
 } connection_t;
 
-typedef struct tls_connection
+typedef struct ssl_connection
 {
-  struct tls *client_tls;
+  SSL *client_tls;
   connection_t *connection;
 
-  void (*read_request)  (struct tls_connection *self, request_t *request);
-  void (*send_response) (struct tls_connection *self, const response_t *response);
-  void (*shutdown)      (struct tls_connection *self);
-  void (*close)         (struct tls_connection *self);
-} tls_connection_t;
+  void (*read_request)  (struct ssl_connection *self, request_t *request);
+  void (*send_response) (struct ssl_connection *self, const response_t *response);
+  void (*shutdown)      (struct ssl_connection *self);
+  void (*close)         (struct ssl_connection *self);
+} ssl_connection_t;
 
 typedef struct dispatcher
 {
@@ -80,8 +85,8 @@ void response_free  (response_t *response);
 void connection_init (connection_t *connection, int client_sock, int buffer_size);
 void connection_free (connection_t *connection);
 
-void tls_connection_init (tls_connection_t *tls_connection, struct tls *ctx, connection_t *connection);
-void tls_connection_free (tls_connection_t *tls_connection);
+void ssl_connection_init (ssl_connection_t *ssl_connection, SSL *ctx, connection_t *connection);
+void ssl_connection_free (ssl_connection_t *ssl_connection);
 
 void dispatcher_init (dispatcher_t *dispatcher);
 void dispatcher_free (dispatcher_t *dispatcher);

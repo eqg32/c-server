@@ -7,7 +7,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <tls.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 #include "../include/child_process.h"
 #include "../include/handlers.h"
@@ -22,16 +24,28 @@ main (int argc, char *argv[])
     }
   int port_ns = htons (port);
 
-  struct tls *server_ctx;
-  struct tls *client_ctx;
-  struct tls_config *config;
+  SSL_library_init ();
+  SSL_load_error_strings ();
+  SSL_CTX *server_ctx = SSL_CTX_new (TLS_server_method ());
+  SSL *client_ssl;
+  if (!server_ctx)
+    {
+      perror ("unable to create SSL context");
+      exit (1);
+    }
 
-  /* tls configuration */
-  config = tls_config_new ();
-  server_ctx = tls_server ();
-  tls_config_set_cert_file (config, "private/server.crt");
-  tls_config_set_key_file (config, "private/server.key");
-  tls_configure (server_ctx, config);
+  SSL_CTX_use_certificate_file (server_ctx, "private/server.pem",
+                                SSL_FILETYPE_PEM);
+  SSL_CTX_use_PrivateKey_file (server_ctx, "private/privkey.pem",
+                               SSL_FILETYPE_PEM);
+
+  SSL_CTX_set_options (server_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+  SSL_CTX_set_cipher_list (server_ctx, "HIGH:!aNULL:!MD5:!RC4");
+  if (SSL_CTX_check_private_key (server_ctx) == -1)
+    {
+      perror ("check");
+      exit (1);
+    }
 
   /* socket related variables */
   int serv_sock = socket (AF_INET, SOCK_STREAM, 0), client_sock;
@@ -87,16 +101,23 @@ main (int argc, char *argv[])
           perror ("accept");
           exit (1);
         }
-      if (tls_accept_socket (server_ctx, &client_ctx, client_sock) == -1)
+
+      client_ssl = SSL_new (server_ctx);
+      if (!client_ssl)
         {
-          perror ("tls accept");
-          exit (1);
+          perror ("TLS handshake");
+          continue;
         }
+
+      SSL_set_fd (client_ssl, client_sock);
+      SSL_accept (client_ssl);
+
       connection_t con;
-      tls_connection_t tls_con;
+      ssl_connection_t ssl_con;
+
       connection_init (&con, client_sock, 1024);
-      tls_connection_init (&tls_con, client_ctx, &con);
-      child (&tls_con, &d);
+      ssl_connection_init (&ssl_con, client_ssl, &con);
+      child (&ssl_con, &d);
     }
   close (serv_sock);
   return 0;

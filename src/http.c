@@ -7,8 +7,11 @@
 #include <strings.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <tls.h>
 #include <unistd.h>
+
+#include <openssl/crypto.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 void
 request_from_string (request_t *self, const char *string)
@@ -226,15 +229,15 @@ connection_free (connection_t *connection)
 }
 
 void
-tls_connection_read_request (tls_connection_t *self, request_t *request)
+ssl_connection_read_request (ssl_connection_t *self, request_t *request)
 {
   char buffer[self->connection->buffer_size];
-  tls_read (self->client_tls, buffer, self->connection->buffer_size);
+  SSL_read (self->client_tls, buffer, self->connection->buffer_size);
   request_inits (request, buffer);
 }
 
 void
-tls_connection_send_response (tls_connection_t *self,
+ssl_connection_send_response (ssl_connection_t *self,
                               const response_t *response)
 {
   int fd;
@@ -246,18 +249,18 @@ tls_connection_send_response (tls_connection_t *self,
             "HTTP/1.1 %d %s\r\ncontent-length: %d\r\ncontent-type: %s\r\n\r\n",
             response->status, response->message, response->content_length,
             response->mime_type);
-  tls_write (self->client_tls, headers, strlen (headers));
+  SSL_write (self->client_tls, headers, strlen (headers));
   switch (response->response_type)
     {
     case String:
-      tls_write (self->client_tls, response->string,
+      SSL_write (self->client_tls, response->string,
                  strlen (response->string));
       break;
     case File:
       fd = open (response->filename, O_RDONLY);
       while ((bytes_read = read (fd, buffer, self->connection->buffer_size))
              != 0)
-        tls_write (self->client_tls, buffer, bytes_read);
+        SSL_write (self->client_tls, buffer, bytes_read);
       close (fd);
       break;
     }
@@ -265,35 +268,35 @@ tls_connection_send_response (tls_connection_t *self,
 }
 
 void
-tls_connection_shutdown (tls_connection_t *self)
+ssl_connection_shutdown (ssl_connection_t *self)
 {
-  tls_close (self->client_tls);
-  tls_free (self->client_tls);
+  SSL_shutdown (self->client_tls);
+  SSL_free (self->client_tls);
 }
 
 void
-tls_connection_close (tls_connection_t *self)
+ssl_connection_close (ssl_connection_t *self)
 {
   self->connection->close (self->connection);
 }
 
 void
-tls_connection_init (tls_connection_t *tls_connection, struct tls *ctx,
+ssl_connection_init (ssl_connection_t *ssl_connection, SSL *ctx,
                      connection_t *connection)
 {
-  tls_connection->client_tls = ctx;
-  tls_connection->connection = connection;
-  tls_connection->read_request = tls_connection_read_request;
-  tls_connection->send_response = tls_connection_send_response;
-  tls_connection->shutdown = tls_connection_shutdown;
-  tls_connection->close = tls_connection_close;
+  ssl_connection->client_tls = ctx;
+  ssl_connection->connection = connection;
+  ssl_connection->read_request = ssl_connection_read_request;
+  ssl_connection->send_response = ssl_connection_send_response;
+  ssl_connection->shutdown = ssl_connection_shutdown;
+  ssl_connection->close = ssl_connection_close;
 }
 
 void
-tls_connection_free (tls_connection_t *tls_connection)
+ssl_connection_free (ssl_connection_t *ssl_connection)
 {
-  tls_connection->shutdown (tls_connection);
-  free (tls_connection);
+  ssl_connection->shutdown (ssl_connection);
+  free (ssl_connection);
 }
 
 void

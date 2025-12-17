@@ -1,5 +1,6 @@
 build/server: build/main.o build/http.o build/list.o build/handlers.o build/child_process.o
-	gcc build/main.o build/http.o build/child_process.o build/list.o build/handlers.o -o build/server -ltls	
+	gcc build/main.o build/http.o build/child_process.o build/list.o build/handlers.o -o build/server -lssl -lcrypto
+
 build/main.o: src/main.c
 	gcc -c src/main.c -o build/main.o
 	

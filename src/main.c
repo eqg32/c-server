@@ -12,11 +12,19 @@
 #include <openssl/ssl.h>
 
 #include "../include/child_process.h"
+#include "../include/config.h"
 #include "../include/handlers.h"
+#include "../include/utils.h"
+
+#define string(arg) #arg
 
 int
 main (int argc, char *argv[])
 {
+  config_t config;
+  allocptrt (config.dispatchers, list_t);
+  config_init (&config, "config");
+
   int port = 8080;
   if (argc >= 2)
     {
@@ -84,12 +92,42 @@ main (int argc, char *argv[])
         }
     }
 
-  dispatcher_t d;
-  d.handlers = malloc (sizeof (list_t));
-  dispatcher_init (&d);
-  d.register_handler (&d, "/", root);
-  d.register_handler (&d, "/mountains.jpg", mountains);
-  d.register_handler (&d, "/favicon.ico", favicon);
+  list_t *dispatchers;
+  list_t *handlers;
+  allocptrt (dispatchers, list_t);
+  allocptrt (handlers, list_t);
+  list_init (dispatchers);
+  list_init (handlers);
+
+  handlers->insert (handlers, string (root), root);
+  handlers->insert (handlers, string (mountains), mountains);
+
+  struct node *tmp = config.dispatchers->head;
+
+  while (tmp)
+    {
+      size_t size, read;
+      char route[SMALL_BUFFER_SIZE], handler[SMALL_BUFFER_SIZE];
+      char *filename, *buffer;
+
+      dispatcher_t *d;
+      allocptrt (d, dispatcher_t);
+      allocptrt (d->handlers, list_t);
+      dispatcher_init (d);
+
+      asprintf (&filename, "disp.%s", tmp->name);
+      FILE *file = fopen (filename, "r");
+
+      while ((read = getline (&buffer, &size, file)) != -1)
+        {
+          sscanf (buffer, "%s %s", route, handler);
+          d->register_handler (d, route, handlers->search (handlers, handler));
+        }
+
+      dispatchers->insert (dispatchers, tmp->name, d);
+      fclose (file);
+      tmp = tmp->next;
+    }
 
   /* fork all the connections and process them */
   while (1)
@@ -117,7 +155,7 @@ main (int argc, char *argv[])
 
       connection_init (&con, client_sock, 1024);
       ssl_connection_init (&ssl_con, client_ssl, &con);
-      child (&ssl_con, &d);
+      child (&ssl_con, dispatchers);
     }
   close (serv_sock);
   return 0;

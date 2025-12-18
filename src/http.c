@@ -1,6 +1,5 @@
 #include "../include/http.h"
 #include <fcntl.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,9 +14,14 @@ request_from_string (request_t *self, const char *string)
 {
   char method[SMALL_BUFFER_SIZE];
   char route[SMALL_BUFFER_SIZE];
+  char host[SMALL_BUFFER_SIZE];
   sscanf (string, "%s %s", method, route);
   asprintf (&self->method, "%s", method);
   asprintf (&self->route, "%s", route);
+  string = strstr (string, "ost: ");
+  sscanf (string, "%*s %s", host);
+  *(strstr (host, ":")) = '\0';
+  asprintf (&self->host, "%s", host);
 }
 
 void

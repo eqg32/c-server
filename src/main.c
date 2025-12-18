@@ -101,6 +101,7 @@ main (int argc, char *argv[])
 
   handlers->insert (handlers, string (root), root);
   handlers->insert (handlers, string (mountains), mountains);
+  handlers->insert (handlers, string (root127), root127);
 
   struct node *tmp = config.dispatchers->head;
 

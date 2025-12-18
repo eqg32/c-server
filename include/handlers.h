@@ -8,4 +8,6 @@ void root (void *connection);
 void mountains (void *connection);
 void favicon (void *connection);
 
+void root127 (void *connection);
+
 #endif

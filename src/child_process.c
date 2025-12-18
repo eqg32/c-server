@@ -9,7 +9,7 @@
 #include "../include/http.h"
 
 void
-child (void *connection, list_t *dispatchers)
+child (void *connection, list_t *dispatchers, dispatcher_t *fallback)
 {
   wait (NULL);
 
@@ -27,6 +27,7 @@ child (void *connection, list_t *dispatchers)
       con->read_request (con, &r);
       dispatcher_t *d
           = (dispatcher_t *)dispatchers->search (dispatchers, r.host);
+      d ?: (d = fallback);
       d->handle (d, con, &r);
       con->shutdown (con);
       con->close (con);

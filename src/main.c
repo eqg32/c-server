@@ -91,6 +91,13 @@ main (int argc, char *argv[])
         }
     }
 
+  dispatcher_t fallback;
+  allocptrt (fallback.handlers, list_t);
+  dispatcher_init (&fallback);
+  fallback.register_handler (&fallback, "/", root);
+  fallback.register_handler (&fallback, "/mountains.jpg", mountains);
+  fallback.register_handler (&fallback, "/favicon.ico", mountains);
+
   list_t *dispatchers;
   list_t *handlers;
   allocptrt (dispatchers, list_t);
@@ -155,7 +162,7 @@ main (int argc, char *argv[])
 
       connection_init (&con, client_sock, 1024);
       ssl_connection_init (&ssl_con, client_ssl, &con);
-      child (&ssl_con, dispatchers);
+      child (&ssl_con, dispatchers, &fallback);
     }
   close (serv_sock);
   return 0;

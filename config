@@ -1,5 +1,5 @@
 port 8080
-tls_certificate private/server.crt
-tls_key private/server.key
+tls_certificate private/server.pem
+tls_key private/privkey.pem
 dispatcher localhost
 dispatcher 127.0.0.1

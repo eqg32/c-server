@@ -42,10 +42,9 @@ main (int argc, char *argv[])
       exit (1);
     }
 
-  SSL_CTX_use_certificate_file (server_ctx, "private/server.pem",
+  SSL_CTX_use_certificate_file (server_ctx, config.tls_certificate,
                                 SSL_FILETYPE_PEM);
-  SSL_CTX_use_PrivateKey_file (server_ctx, "private/privkey.pem",
-                               SSL_FILETYPE_PEM);
+  SSL_CTX_use_PrivateKey_file (server_ctx, config.tls_key, SSL_FILETYPE_PEM);
 
   SSL_CTX_set_options (server_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
   SSL_CTX_set_cipher_list (server_ctx, "HIGH:!aNULL:!MD5:!RC4");

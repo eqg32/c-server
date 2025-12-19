@@ -1,16 +1,11 @@
 build/server: build/main.o build/http.o \
-	build/list.o build/handlers.o \
-	build/child_process.o build/config.o
+	build/list.o build/child_process.o build/config.o
 	gcc build/main.o build/http.o \
-	build/child_process.o build/list.o \
-	build/handlers.o build/config.o \
+	build/child_process.o build/list.o build/config.o \
 	-o build/server -lssl -lcrypto
 
 build/main.o: src/main.c
 	gcc -c src/main.c -o build/main.o
-
-build/handlers.o: src/handlers.c include/handlers.h
-	gcc -c src/handlers.c -Iinclude -o build/handlers.o
 
 build/child_process.o: src/child_process.c include/child_process.h
 	gcc -c src/child_process.c -Iinclude -o build/child_process.o

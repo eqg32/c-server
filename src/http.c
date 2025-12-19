@@ -305,9 +305,9 @@ ssl_connection_free (ssl_connection_t *ssl_connection)
 
 void
 dispatcher_register_handler (dispatcher_t *self, const char *route,
-                             void (*handler) (void *connection))
+                             char *filename)
 {
-  self->handlers->insert (self->handlers, route, handler);
+  self->routes->insert (self->routes, route, filename);
 }
 
 void
@@ -315,11 +315,10 @@ dispatcher_handle (const dispatcher_t *self, void *connection,
                    request_t *request)
 {
   CONNECTION_TYPE con = (CONNECTION_TYPE)connection;
-  void (*handler) (void *)
-      = self->handlers->search (self->handlers, request->route);
-  if (!handler)
+  char *filename = self->routes->search (self->routes, request->route);
+  response_t r;
+  if (!filename)
     {
-      response_t r;
       response_inits (
           &r, 403,
           "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\"> "
@@ -329,7 +328,10 @@ dispatcher_handle (const dispatcher_t *self, void *connection,
       con->send_response (con, &r);
     }
   else
-    handler (con);
+    {
+      response_initf (&r, 200, filename);
+      con->send_response (con, &r);
+    }
 }
 
 void
@@ -337,12 +339,12 @@ dispatcher_init (dispatcher_t *dispatcher)
 {
   dispatcher->register_handler = dispatcher_register_handler;
   dispatcher->handle = dispatcher_handle;
-  list_init (dispatcher->handlers);
+  list_init (dispatcher->routes);
 }
 
 void
 dispatcher_free (dispatcher_t *dispatcher)
 {
-  list_free (dispatcher->handlers);
+  list_free (dispatcher->routes);
   free (dispatcher);
 }

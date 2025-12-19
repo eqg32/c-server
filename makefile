@@ -1,7 +1,6 @@
 build/server: build/main.o build/http.o \
 	build/list.o build/handlers.o \
 	build/child_process.o build/config.o
-
 	gcc build/main.o build/http.o \
 	build/child_process.o build/list.o \
 	build/handlers.o build/config.o \

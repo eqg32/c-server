@@ -13,7 +13,6 @@
 
 #include "../include/child_process.h"
 #include "../include/config.h"
-#include "../include/handlers.h"
 #include "../include/utils.h"
 
 #define string(arg) #arg
@@ -92,34 +91,29 @@ main (int argc, char *argv[])
     }
 
   dispatcher_t fallback;
-  allocptrt (fallback.handlers, list_t);
+  allocptrt (fallback.routes, list_t);
   dispatcher_init (&fallback);
-  fallback.register_handler (&fallback, "/", root);
-  fallback.register_handler (&fallback, "/mountains.jpg", mountains);
-  fallback.register_handler (&fallback, "/favicon.ico", mountains);
+  fallback.register_handler (&fallback, "/", "public/index.html");
+  fallback.register_handler (&fallback, "/mountains.jpg",
+                             "public/mountains.jpg");
+  fallback.register_handler (&fallback, "/favicon.ico",
+                             "public/mountains.jpg");
 
   list_t *dispatchers;
-  list_t *handlers;
   allocptrt (dispatchers, list_t);
-  allocptrt (handlers, list_t);
   list_init (dispatchers);
-  list_init (handlers);
-
-  handlers->insert (handlers, string (root), root);
-  handlers->insert (handlers, string (mountains), mountains);
-  handlers->insert (handlers, string (root127), root127);
 
   struct node *tmp = config.dispatchers->head;
 
   while (tmp)
     {
       size_t size, read;
-      char route[SMALL_BUFFER_SIZE], handler[SMALL_BUFFER_SIZE];
+      char route[SMALL_BUFFER_SIZE], response_file[SMALL_BUFFER_SIZE];
       char *filename, *buffer;
 
       dispatcher_t *d;
       allocptrt (d, dispatcher_t);
-      allocptrt (d->handlers, list_t);
+      allocptrt (d->routes, list_t);
       dispatcher_init (d);
 
       asprintf (&filename, "disp.%s", tmp->name);
@@ -127,8 +121,10 @@ main (int argc, char *argv[])
 
       while ((read = getline (&buffer, &size, file)) != -1)
         {
-          sscanf (buffer, "%s %s", route, handler);
-          d->register_handler (d, route, handlers->search (handlers, handler));
+          char *rf;
+          sscanf (buffer, "%s %s", route, response_file);
+          asprintf (&rf, "%s", response_file);
+          d->register_handler (d, route, rf);
         }
 
       dispatchers->insert (dispatchers, tmp->name, d);

@@ -69,9 +69,9 @@ typedef struct ssl_connection
 
 typedef struct dispatcher
 {
-  list_t *handlers;
+  list_t *routes;
 
-  void (*register_handler) (struct dispatcher *self, const char *route, void (*handler) (void *connection));
+  void (*register_handler) (struct dispatcher *self, const char *route, char *filename);
   void (*handle)           (const struct dispatcher *self, void *connection, request_t *request);
 } dispatcher_t;
 

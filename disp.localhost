@@ -1,3 +1,3 @@
-/ root
-/mountains.jpg mountains
-/favicon.ico mountains
+/ public/index.html
+/mountains.jpg public/mountains.jpg
+/favicon.ico public/mountains.jpg

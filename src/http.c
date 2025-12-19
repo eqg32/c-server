@@ -1,6 +1,4 @@
-#include "../include/http.h"
 #include <fcntl.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +7,8 @@
 #include <sys/stat.h>
 #include <tls.h>
 #include <unistd.h>
+
+#include "../include/http.h"
 
 void
 request_from_string (request_t *self, const char *string)

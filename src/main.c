@@ -15,7 +15,7 @@
 #include "../include/config.h"
 #include "../include/utils.h"
 
-#define string(arg) #arg
+#define FALLBACK_ROOT "public/fallback"
 
 int
 main (int argc, char *argv[])
@@ -24,7 +24,7 @@ main (int argc, char *argv[])
   allocptrt (config.dispatchers, list_t);
   config_init (&config, "config");
 
-  int port = 8080;
+  int port = config.port;
   if (argc >= 2)
     {
       port = atoi (argv[1]);
@@ -91,14 +91,7 @@ main (int argc, char *argv[])
     }
 
   dispatcher_t fallback;
-  allocptrt (fallback.routes, list_t);
-  dispatcher_init (&fallback);
-  fallback.register_handler (&fallback, "/", "public/index.html");
-  fallback.register_handler (&fallback, "/mountains.jpg",
-                             "public/mountains.jpg");
-  fallback.register_handler (&fallback, "/favicon.ico",
-                             "public/mountains.jpg");
-
+  dispatcher_init (&fallback, FALLBACK_ROOT);
   list_t *dispatchers;
   allocptrt (dispatchers, list_t);
   list_init (dispatchers);
@@ -108,23 +101,17 @@ main (int argc, char *argv[])
   while (tmp)
     {
       size_t size, read;
-      char route[SMALL_BUFFER_SIZE], response_file[SMALL_BUFFER_SIZE];
+      char root[SMALL_BUFFER_SIZE];
       char *filename, *buffer;
-
       dispatcher_t *d;
       allocptrt (d, dispatcher_t);
-      allocptrt (d->routes, list_t);
-      dispatcher_init (d);
-
       asprintf (&filename, "dispatchers/disp.%s", tmp->name);
       FILE *file = fopen (filename, "r");
 
       while ((read = getline (&buffer, &size, file)) != -1)
         {
-          char *rf;
-          sscanf (buffer, "%s %s", route, response_file);
-          asprintf (&rf, "%s", response_file);
-          d->register_handler (d, route, rf);
+          sscanf (buffer, "%s", root);
+          dispatcher_init (d, root);
         }
 
       dispatchers->insert (dispatchers, tmp->name, d);

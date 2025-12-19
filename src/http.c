@@ -304,20 +304,24 @@ ssl_connection_free (ssl_connection_t *ssl_connection)
 }
 
 void
-dispatcher_register_handler (dispatcher_t *self, const char *route,
-                             char *filename)
-{
-  self->routes->insert (self->routes, route, filename);
-}
-
-void
 dispatcher_handle (const dispatcher_t *self, void *connection,
                    request_t *request)
 {
   CONNECTION_TYPE con = (CONNECTION_TYPE)connection;
-  char *filename = self->routes->search (self->routes, request->route);
+  char *filename;
+  char *checks[5];
   response_t r;
-  if (!filename)
+  if (!strcmp (request->route, "/"))
+    asprintf (&filename, "%s/index.html", self->root);
+  else
+    asprintf (&filename, "%s%s", self->root, request->route);
+  checks[0] = strstr (filename, "..");
+  checks[1] = strstr (filename, "//");
+  checks[2] = strstr (filename, "~");
+  checks[3] = strstr (filename, "./");
+  checks[4] = strstr (filename, "/.");
+  FILE *file = fopen (filename, "r");
+  if (!file || checks[0] || checks[1] || checks[2] || checks[3] || checks[4])
     {
       response_inits (
           &r, 403,
@@ -332,19 +336,19 @@ dispatcher_handle (const dispatcher_t *self, void *connection,
       response_initf (&r, 200, filename);
       con->send_response (con, &r);
     }
+  fclose (file);
 }
 
 void
-dispatcher_init (dispatcher_t *dispatcher)
+dispatcher_init (dispatcher_t *dispatcher, const char *root)
 {
-  dispatcher->register_handler = dispatcher_register_handler;
   dispatcher->handle = dispatcher_handle;
-  list_init (dispatcher->routes);
+  asprintf (&dispatcher->root, "%s", root);
 }
 
 void
 dispatcher_free (dispatcher_t *dispatcher)
 {
-  list_free (dispatcher->routes);
+  free (dispatcher->root);
   free (dispatcher);
 }

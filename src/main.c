@@ -116,7 +116,7 @@ main (int argc, char *argv[])
       allocptrt (d->routes, list_t);
       dispatcher_init (d);
 
-      asprintf (&filename, "disp.%s", tmp->name);
+      asprintf (&filename, "dispatchers/disp.%s", tmp->name);
       FILE *file = fopen (filename, "r");
 
       while ((read = getline (&buffer, &size, file)) != -1)

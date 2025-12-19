@@ -16,7 +16,6 @@ typedef struct request
 {
   char *method;
   char *route;
-  char *host;
 
   void  (*from_string) (struct request *self, const char *string);
 } request_t;

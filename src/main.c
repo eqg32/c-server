@@ -78,7 +78,7 @@ main (int argc, char *argv[])
   d.register_handler (&d, "/favicon.ico", favicon);
 
   /* fork all the connections and process them */
-  while (1)
+  for (;;)
     {
       if ((client_sock
            = accept (serv_sock, (struct sockaddr *)&sockaddr, &socklen))
@@ -99,5 +99,7 @@ main (int argc, char *argv[])
       child (&tls_con, &d);
     }
   close (serv_sock);
+  tls_free (server_ctx);
+  tls_config_free (config);
   return 0;
 }

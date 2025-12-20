@@ -71,19 +71,19 @@ typedef struct dispatcher
 
 void request_init (request_t *request, const char *method, const char *path);
 void request_inits (request_t *request, const char *string);
-void request_free (request_t *request);
+void request_free (void *request);
 
 void response_initf (response_t *response, int status, const char *filename);
 void response_inits (response_t *response, int status, const char *string);
-void response_free  (response_t *response);
+void response_free  (void *response);
 
 void connection_init (connection_t *connection, int client_sock, int buffer_size);
-void connection_free (connection_t *connection);
+void connection_free (void *connection);
 
 void tls_connection_init (tls_connection_t *tls_connection, struct tls *ctx, connection_t *connection);
-void tls_connection_free (tls_connection_t *tls_connection);
+void tls_connection_free (void *tls_connection);
 
 void dispatcher_init (dispatcher_t *dispatcher);
-void dispatcher_free (dispatcher_t *dispatcher);
+void dispatcher_free (void *dispatcher);
 
 #endif

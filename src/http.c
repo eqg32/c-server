@@ -36,11 +36,12 @@ request_inits (request_t *request, const char *string)
 }
 
 void
-request_free (request_t *request)
+request_free (void *request)
 {
-  free (request->method);
-  free (request->route);
-  free (request);
+  request_t *ptr = (request_t *)request;
+  free (ptr->method);
+  free (ptr->route);
+  free (ptr);
 }
 
 char *
@@ -148,15 +149,16 @@ response_inits (response_t *response, int status, const char *string)
 }
 
 void
-response_free (response_t *response)
+response_free (void *response)
 {
-  free (response->message);
-  free (response->mime_type);
-  if (response->response_type == File)
-    free (response->filename);
-  else if (response->response_type == String)
-    free (response->string);
-  free (response);
+  response_t *ptr = (response_t *)response;
+  free (ptr->message);
+  free (ptr->mime_type);
+  if (ptr->response_type == File)
+    free (ptr->filename);
+  else if (ptr->response_type == String)
+    free (ptr->string);
+  free (ptr);
 }
 
 void
@@ -219,10 +221,11 @@ connection_init (connection_t *connection, int client_sock, int buffer_size)
 }
 
 void
-connection_free (connection_t *connection)
+connection_free (void *connection)
 {
-  connection->shutdown (connection);
-  free (connection);
+  connection_t *ptr = (connection_t *)connection;
+  ptr->shutdown (ptr);
+  free (ptr);
 }
 
 void
@@ -290,10 +293,11 @@ tls_connection_init (tls_connection_t *tls_connection, struct tls *ctx,
 }
 
 void
-tls_connection_free (tls_connection_t *tls_connection)
+tls_connection_free (void *tls_connection)
 {
-  tls_connection->shutdown (tls_connection);
-  free (tls_connection);
+  tls_connection_t *ptr = (tls_connection_t *)tls_connection;
+  ptr->shutdown (ptr);
+  free (ptr);
 }
 
 void
@@ -334,8 +338,9 @@ dispatcher_init (dispatcher_t *dispatcher)
 }
 
 void
-dispatcher_free (dispatcher_t *dispatcher)
+dispatcher_free (void *dispatcher)
 {
-  list_free (dispatcher->handlers);
-  free (dispatcher);
+  dispatcher_t *ptr = (dispatcher_t *)dispatcher;
+  list_free (ptr->handlers);
+  free (ptr);
 }

@@ -19,5 +19,10 @@ build/config.o: src/config.c include/config.h
 build/list.o: src/list.c include/list.h
 	gcc -c src/list.c -Iinclude -o build/list.o
 
+certificate:
+	openssl genpkey -algorithm RSA -out private/privkey.pem -pkeyopt rsa_keygen_bits:2048
+	openssl req -new -key private/privkey.pem -out private/request.csr
+	openssl x509 -req -days 365 -in private/request.csr -signkey private/privkey.pem -out private/certificate.pem
+	
 clean:
 	rm build/*
